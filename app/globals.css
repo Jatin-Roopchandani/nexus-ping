@@ -18,7 +18,24 @@
     --foreground: #ededed;
   }
 }
+/* Custom scrollbar for sidebar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #6d28d9 #1e1b4b; /* thumb color, track color */
+}
 
+/* Chrome, Edge, Safari */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(109, 40, 217, 0.7); /* purple thumb */
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
 body {
   background: var(--background);
   color: var(--foreground);
