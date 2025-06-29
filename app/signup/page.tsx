@@ -1,8 +1,31 @@
 "use client"
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { signup } from "./action";
 
 export default function SignUp() {
+  const [error, setError] = useState("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    
+    switch (errorParam) {
+      case 'weak_password':
+        setError("Password is too weak. Please use at least 6 characters.");
+        break;
+      case 'invalid_email':
+        setError("Please enter a valid email address.");
+        break;
+      case 'signup_failed':
+        setError("Signup failed. Please try again.");
+        break;
+      default:
+        setError("");
+    }
+  }, [searchParams]);
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-between bg-gradient-to-br from-blue-50 via-white to-blue-100 p-6 sm:p-12 font-[family-name:var(--font-geist-sans)] relative overflow-hidden"
@@ -45,8 +68,10 @@ export default function SignUp() {
               id="password"
               name="password"
               required
+              minLength={6}
               className="w-full px-4 py-2 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-black/30 text-blue-900 dark:text-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+            <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
           </div>
           <button
             type="submit"
@@ -55,6 +80,13 @@ export default function SignUp() {
             Create Account
           </button>
         </form>
+        
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-center text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+        
         <p className="mt-6 text-center text-blue-900 dark:text-blue-100 text-sm">
           Already have an account?{' '}
           <Link href="/login" className="text-blue-700 hover:underline">Log in</Link>

@@ -1,11 +1,31 @@
 "use client"
 import Link from "next/link";
-import { useState } from "react";
-import { login } from "./action";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { login, resendConfirmation } from "./action";
 
 export default function Login() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    const successParam = searchParams.get('success');
+    
+    if (errorParam === 'email_not_confirmed') {
+      setError("Account not confirmed. Please check your email and click the confirmation link to verify your account.");
+      setShowResendForm(true);
+    } else if (errorParam === 'account_exists') {
+      setError("An account with this email already exists. Please log in instead.");
+    } else if (errorParam === 'resend_failed') {
+      setError("Failed to resend confirmation email. Please try again.");
+    } else if (successParam === 'confirmation_sent') {
+      setSuccess("Confirmation email sent! Please check your inbox.");
+    }
+  }, [searchParams]);
 
   return (
     <div
@@ -28,6 +48,8 @@ export default function Login() {
               type="email"
               id="email"
               name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-2 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-black/30 text-blue-900 dark:text-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
@@ -46,7 +68,41 @@ export default function Login() {
             Log In
           </button>
         </form>
-        {error && <p className="mt-4 text-center text-red-600">{error}</p>}
+        
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-center text-red-600 text-sm">{error}</p>
+            <p className="text-center text-red-500 text-xs mt-1">
+              {error.includes('not confirmed') && "Check your spam folder if you don't see the confirmation email."}
+            </p>
+          </div>
+        )}
+        
+        {showResendForm && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-center text-blue-600 text-sm mb-2">
+              Didn't receive the confirmation email?
+            </p>
+            <form action={resendConfirmation} className="flex gap-2">
+              <input
+                type="email"
+                name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="flex-1 px-3 py-1 text-sm rounded border border-blue-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                required
+              />
+              <button
+                type="submit"
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                Resend
+              </button>
+            </form>
+          </div>
+        )}
+        
         {success && <p className="mt-4 text-center text-green-600">{success}</p>}
         <p className="mt-6 text-center text-blue-900 dark:text-blue-100 text-sm">
           Don&apos;t have an account?{' '}
