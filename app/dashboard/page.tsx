@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import AddMonitorButton from './AddMonitorButton'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-
+  
   const { data, error } = await supabase.auth.getUser()
   if (error || !data?.user) {
     redirect('/login')
@@ -27,11 +28,11 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Left Sidebar */}
       <div className="w-64 shadow-lg fixed h-full overflow-y-auto custom-scrollbar rounded-r-lg overflow-hidden scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent" style={{
-            backgroundImage: "url('/gradient.jpg')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat"
-          }}>
+        backgroundImage: "url('/gradient.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat"
+      }}>
         <div className="relative h-full">
           {/* User Profile Section */}
           <div className="p-6 border-b border-white/20">
@@ -161,11 +162,7 @@ export default async function DashboardPage() {
               <h1 className="text-3xl font-bold text-sky-50">Dashboard</h1>
               <p className="mt-2 text-sky-50">Monitor your websites and track incidents in real-time</p>
             </div>
-            <button
-              className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-pink-500 hover:to-purple-600 text-white font-semibold px-6 py-2 rounded-lg shadow transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-pink-400"
-            >
-              + Add Monitor
-            </button>
+            <AddMonitorButton />
           </div>
 
           {/* Stats Cards */}
