@@ -60,15 +60,7 @@ export default function AddMonitorButton() {
       </button>
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div 
-            className="rounded-lg shadow-lg w-full max-w-md p-6 relative border border-white/20 overflow-hidden"
-            style={{
-              backgroundImage: "url('/gradient.jpg')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat"
-            }}
-          >
+          <div className="rounded-lg shadow-lg w-full max-w-md p-6 relative border border-white/20 overflow-hidden bg-indigo-950">
             <button
               className="absolute top-2 right-2 text-white/80 hover:text-white"
               onClick={() => setModalOpen(false)}
