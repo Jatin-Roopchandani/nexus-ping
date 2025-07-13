@@ -17,13 +17,39 @@ export default async function DashboardPage() {
     .eq('user_id', data.user.id)
     .order('created_at', { ascending: false })
 
-  const monitoredSites = (monitors || []).map((monitor) => ({
-    id: monitor.id,
-    name: monitor.name,
-    url: monitor.url,
-    status: monitor.is_active ? 'online' : 'offline',
-    lastCheck: 'just now', // Placeholder, replace with real check time if available
-  }))
+  const monitorIds = (monitors || []).map(m => m.id);
+
+  // Fetch the latest check for each monitor
+  let latestChecks: Record<string, any> = {};
+  if (monitorIds.length > 0) {
+    const { data: checks } = await supabase
+      .from('monitor_checks')
+      .select('monitor_id, status, checked_at')
+      .in('monitor_id', monitorIds)
+      .order('checked_at', { ascending: false });
+
+    // Map: monitor_id -> latest check
+    for (const check of checks || []) {
+      if (!latestChecks[check.monitor_id]) {
+        latestChecks[check.monitor_id] = check;
+      }
+    }
+  }
+
+  const monitoredSites = (monitors || []).map((monitor) => {
+    const check = latestChecks[monitor.id];
+    return {
+      id: monitor.id,
+      name: monitor.name,
+      url: monitor.url,
+      status: check ? check.status : (monitor.is_active ? 'unknown' : 'offline'),
+      lastCheck: check ? new Date(check.checked_at).toLocaleString() : 'Never',
+    }
+  });
+
+  // Stats
+  const onlineCount = monitoredSites.filter(site => site.status === 'online').length;
+  const offlineCount = monitoredSites.filter(site => site.status === 'offline').length;
 
   const incidents = [
     { id: 1, site: 'MyApp.com', type: 'Downtime', status: 'Resolved', time: '2 hours ago' },
@@ -179,7 +205,7 @@ export default async function DashboardPage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-white">Online Sites</p>
-                    <p className="text-2xl font-semibold text-white">3</p>
+                    <p className="text-2xl font-semibold text-white">{onlineCount}</p>
                   </div>
                 </div>
               </div>
@@ -195,7 +221,7 @@ export default async function DashboardPage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-white">Offline Sites</p>
-                    <p className="text-2xl font-semibold text-white">1</p>
+                    <p className="text-2xl font-semibold text-white">{offlineCount}</p>
                   </div>
                 </div>
               </div>

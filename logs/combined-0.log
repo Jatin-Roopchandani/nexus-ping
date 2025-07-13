@@ -1,0 +1,130 @@
+2025-07-13T12:10:34: TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".ts" for C:\Projects\uptime-monitoring-service\monitoring\utils\monitor.ts
+2025-07-13T12:10:34:     at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:160:9)
+2025-07-13T12:10:34:     at defaultGetFormat (node:internal/modules/esm/get_format:203:36)
+2025-07-13T12:10:34:     at defaultLoad (node:internal/modules/esm/load:143:22)
+2025-07-13T12:10:34:     at async ModuleLoader.load (node:internal/modules/esm/loader:396:7)
+2025-07-13T12:10:34:     at async ModuleLoader.moduleProvider (node:internal/modules/esm/loader:278:45)
+2025-07-13T12:10:34:     at async link (node:internal/modules/esm/module_job:78:21) {
+2025-07-13T12:10:34:   code: 'ERR_UNKNOWN_FILE_EXTENSION'
+2025-07-13T12:10:34: }
+2025-07-13T12:11:26: TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".ts" for C:\Projects\uptime-monitoring-service\monitoring\utils\monitor.ts
+2025-07-13T12:11:26:     at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:160:9)
+2025-07-13T12:11:26:     at defaultGetFormat (node:internal/modules/esm/get_format:203:36)
+2025-07-13T12:11:26:     at defaultLoad (node:internal/modules/esm/load:143:22)
+2025-07-13T12:11:26:     at async ModuleLoader.load (node:internal/modules/esm/loader:396:7)
+2025-07-13T12:11:26:     at async ModuleLoader.moduleProvider (node:internal/modules/esm/loader:278:45)
+2025-07-13T12:11:26:     at async link (node:internal/modules/esm/module_job:78:21) {
+2025-07-13T12:11:26:   code: 'ERR_UNKNOWN_FILE_EXTENSION'
+2025-07-13T12:11:26: }
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:30: node: bad option: --esm
+2025-07-13T12:14:31: node: bad option: --esm
+2025-07-13T12:14:31: node: bad option: --esm
+2025-07-13T12:14:31: node: bad option: --esm
+2025-07-13T12:14:31: node: bad option: --esm
+2025-07-13T12:14:31: node: bad option: --esm
+2025-07-13T12:14:34: node: bad option: --esm
+2025-07-13T12:14:34: node: bad option: --esm
+2025-07-13T12:14:34: node: bad option: --esm
+2025-07-13T12:14:34: node: bad option: --esm
+2025-07-13T12:14:34: node: bad option: --esm
+2025-07-13T12:14:34: node: bad option: --esm
+2025-07-13T12:14:34: node: bad option: --esm
+2025-07-13T12:14:34: node: bad option: --esm
+2025-07-13T12:14:35: node: bad option: --esm
+2025-07-13T12:14:35: node: bad option: --esm
+2025-07-13T12:14:35: node: bad option: --esm
+2025-07-13T12:14:35: node: bad option: --esm
+2025-07-13T12:14:35: node: bad option: --esm
+2025-07-13T12:14:35: node: bad option: --esm
+2025-07-13T12:14:35: node: bad option: --esm
+2025-07-13T12:14:35: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:37: node: bad option: --esm
+2025-07-13T12:14:38: node: bad option: --esm
+2025-07-13T12:14:38: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T12:58:46: node: bad option: --esm
+2025-07-13T13:02:30: node: bad option: --esm
+2025-07-13T13:02:30: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:31: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:02:47: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm
+2025-07-13T13:05:08: node: bad option: --esm

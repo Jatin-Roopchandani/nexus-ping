@@ -1,0 +1,23 @@
+services:
+  uptime-monitor:
+    build: .
+    container_name: uptime-monitor
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - monitor-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Monitor is running')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  monitor-network:
+    driver: bridge 
