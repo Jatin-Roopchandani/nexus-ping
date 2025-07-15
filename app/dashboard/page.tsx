@@ -51,11 +51,22 @@ export default async function DashboardPage() {
   const onlineCount = monitoredSites.filter(site => site.status === 'online').length;
   const offlineCount = monitoredSites.filter(site => site.status === 'offline').length;
 
-  const incidents = [
-    { id: 1, site: 'MyApp.com', type: 'Downtime', status: 'Resolved', time: '2 hours ago' },
-    { id: 2, site: 'API.com', type: 'High Response Time', status: 'Investigating', time: '30 min ago' },
-    { id: 3, site: 'Example.com', type: 'SSL Certificate Expired', status: 'Resolved', time: '1 day ago' },
-  ]
+
+ 
+  let incidents: any[] = [];
+  if (monitorIds.length > 0) {
+    const { data: incidentsData, error: incidentsError } = await supabase
+      .from('incidents')
+      .select('id, monitor_id, name, url, type, status, started_at, resolved_at, duration_minutes, description, created_at')
+      .in('monitor_id', monitorIds)
+      .order('started_at', { ascending: false });
+    if (incidentsError) {
+      console.error('Error fetching incidents:', incidentsError);
+      incidents = [];
+    } else {
+      incidents = incidentsData || [];
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -137,7 +148,7 @@ export default async function DashboardPage() {
                   <div key={incident.id} className="px-3 py-2 hover:bg-white/10 rounded-md">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{incident.site}</p>
+                        <p className="text-sm font-medium text-white truncate">{incident.name}</p>
                         <p className="text-xs text-white/60 truncate">{incident.type}</p>
                       </div>
                       <div className="flex flex-col items-end">
@@ -146,7 +157,7 @@ export default async function DashboardPage() {
                         }`}>
                           {incident.status}
                         </span>
-                        <span className="text-xs text-white/60 mt-1">{incident.time}</span>
+                        <span className="text-xs text-white/60 mt-1">{incident.started_at ? new Date(incident.started_at).toLocaleString() : ''}</span>
                       </div>
                     </div>
                   </div>
@@ -302,7 +313,7 @@ export default async function DashboardPage() {
                   {incidents.map((incident) => (
                     <div key={incident.id} className="flex items-center justify-between p-4 border hover:bg-indigo-200 border-purple-200 rounded-lg bg-indigo-300">
                       <div>
-                        <h3 className="text-sm font-medium text-gray-900">{incident.site}</h3>
+                        <h3 className="text-sm font-medium text-gray-900">{incident.name}</h3>
                         <p className="text-xs text-gray-600">{incident.type}</p>
                       </div>
                       <div className="text-right">
@@ -311,7 +322,7 @@ export default async function DashboardPage() {
                         }`}>
                           {incident.status}
                         </span>
-                        <p className="text-xs text-gray-600 mt-1">{incident.time}</p>
+                        <p className="text-xs text-gray-600 mt-1">{incident.started_at ? new Date(incident.started_at).toLocaleString() : ''}</p>
                       </div>
                     </div>
                   ))}

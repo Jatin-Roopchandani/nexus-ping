@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
+import { Client as PgClient, Notification } from 'pg';
 
 // Environment variables with validation
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -93,7 +94,43 @@ async function checkMonitor(monitor: Monitor) {
     if (response.status === monitor.expected_status_code) {
       status = 'online';
       log(`✅ ${monitor.name} is ONLINE (Status: ${status_code}, Response Time: ${response_time}ms)`, 'info');
+
+      // Incident resolution logic
+      try {
+        // Find all active incidents for this monitor (any type) that are not resolved
+        const { data: activeIncidents, error: fetchActiveError } = await supabase
+          .from('incidents')
+          .select('id, started_at')
+          .eq('monitor_id', monitor.id)
+          .eq('status', 'active')
+          .is('resolved_at', null);
+
+        if (activeIncidents && activeIncidents.length > 0) {
+          const now = new Date();
+          for (const incident of activeIncidents) {
+            const startedAt = new Date(incident.started_at);
+            const durationMs = now.getTime() - startedAt.getTime();
+            const durationMinutes = Math.round(durationMs / 60000);
+            const { error: updateError } = await supabase
+              .from('incidents')
+              .update({
+                resolved_at: now.toISOString(),
+                status: 'Resolved',
+                duration_minutes: durationMinutes,
+              })
+              .eq('id', incident.id);
+            if (updateError) {
+              log(`❌ Failed to resolve incident ${incident.id} for ${monitor.name}: ${updateError.message}`, 'error');
+            } else {
+              log(`✅ Incident ${incident.id} resolved for ${monitor.name}`, 'info');
+            }
+          }
+        }
+      } catch (resolveError: any) {
+        log(`❌ Error while resolving incidents for ${monitor.name}: ${resolveError.message}`, 'error');
+      }
     } else {
+      
       status = 'status_code_error';
       error_message = `Expected ${monitor.expected_status_code}, got ${response.status}`;
       log(`⚠️ ${monitor.name} has STATUS CODE ERROR: ${error_message}`, 'warn');
@@ -136,6 +173,45 @@ async function checkMonitor(monitor: Monitor) {
     }
   } catch (dbError: any) {
     log(`❌ Failed to save check result for ${monitor.name}: ${dbError.message}`, 'error');
+  }
+
+  // Only log an incident if the monitor is not online
+  if (status !== 'online') {
+    try {
+      // Check for existing active incident (optional, for deduplication)
+      const { data: existingIncidents, error: fetchError } = await supabase
+        .from('incidents')
+        .select('id')
+        .eq('monitor_id', monitor.id)
+        .eq('type', status)
+        .eq('status', 'active')
+        .is('resolved_at', null);
+
+      if (!existingIncidents || existingIncidents.length === 0) {
+        // No active incident, insert a new one
+        const { error: incidentError } = await supabase.from('incidents').insert([
+          {
+            monitor_id: monitor.id,
+            name: monitor.name, // Add website name
+            url: monitor.url,   // Add website URL
+            type: status,
+            status: 'active',
+            started_at: new Date().toISOString(),
+            resolved_at: null,
+            duration_minutes: null,
+            description: error_message || 'Incident detected',
+            created_at: new Date().toISOString(),
+          },
+        ]);
+        if (incidentError) {
+          log(`❌ Failed to log incident for ${monitor.name}: ${incidentError.message}`, 'error');
+        } else {
+          log(`🚨 Incident logged for ${monitor.name} (${status})`, 'warn');
+        }
+      }
+    } catch (incidentCatchError: any) {
+      log(`❌ Error while checking/inserting incident: ${incidentCatchError.message}`, 'error');
+    }
   }
 }
 
@@ -228,8 +304,50 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
+// --- Listen for new monitors via Postgres NOTIFY ---
+async function listenForNewMonitors() {
+  const pgUrl = process.env.DATABASE_URL;
+  if (!pgUrl) {
+    log('❌ DATABASE_URL environment variable is not set for Postgres NOTIFY listener', 'error');
+    return;
+  }
+  const pgClient = new PgClient({ connectionString: pgUrl });
+  await pgClient.connect();
+  await pgClient.query('LISTEN new_monitor');
+  log('🔔 Listening for new_monitor notifications from Postgres...', 'info');
+
+  pgClient.on('notification', async (msg: Notification) => {
+    if (msg.channel === 'new_monitor') {
+      const monitorId = msg.payload;
+      log(`🔔 Received new_monitor notification for monitor_id: ${monitorId}`, 'info');
+      // Fetch the new monitor from Supabase
+      const { data: monitor, error } = await supabase
+        .from('monitors')
+        .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications')
+        .eq('id', monitorId)
+        .single();
+      if (error || !monitor) {
+        log(`❌ Failed to fetch new monitor with id ${monitorId}: ${error?.message}`, 'error');
+        return;
+      }
+      // Start monitoring the new monitor
+      startMonitorLoop(monitor);
+      log(`✅ Started monitoring new monitor: ${monitor.name} (${monitor.url})`, 'info');
+    }
+  });
+
+  pgClient.on('error', (err: Error) => {
+    log(`❌ Postgres NOTIFY listener error: ${err.message}`, 'error');
+  });
+}
+
 // Start the application
 main().catch((error) => {
   log(`❌ Failed to start monitor service: ${error.message}`, 'error');
   process.exit(1);
+});
+
+// Start listening for new monitors
+listenForNewMonitors().catch((err) => {
+  log(`❌ Failed to start Postgres NOTIFY listener: ${err.message}`, 'error');
 }); 
