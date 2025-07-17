@@ -1,12 +1,12 @@
 "use server"
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-
 export async function addMonitor(formData: FormData) {
   const supabase = await createClient()
   
   // Get the current user
   const { data: { user }, error: userError } = await supabase.auth.getUser()
+
   if (userError || !user) {
     redirect('/login')
   }

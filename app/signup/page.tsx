@@ -3,7 +3,18 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { signup } from "./action";
+import { createClient } from '@/utils/supabase/client'
 
+const supabase = await createClient()
+
+async function LoginWithGoogle(){
+  await supabase.auth.signInWithOAuth({
+    provider:'google',
+    options: {
+      redirectTo: `http://localhost:3000/auth/callback`,
+    },
+  })
+}
 export default function SignUp() {
   const [error, setError] = useState("");
   const searchParams = useSearchParams();
@@ -80,6 +91,19 @@ export default function SignUp() {
             Create Account
           </button>
         </form>
+        {/* Google Sign-Up Button */}
+        <div className="mt-4 flex flex-col items-center">
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-full bg-white border border-blue-300 shadow hover:bg-blue-50 text-blue-900 font-semibold text-lg transition-colors"
+            onClick={() => {
+              LoginWithGoogle();
+            }}
+          >
+            <img src="/google-logo.svg" alt="Google" className="w-5 h-5" />
+            Sign up with Google
+          </button>
+        </div>
         
         {error && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
