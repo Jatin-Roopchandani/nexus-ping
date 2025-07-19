@@ -1,10 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
 import { Client as PgClient, Notification } from 'pg';
+import nodemailer from 'nodemailer';
 
 // Environment variables with validation
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const DATABASE_URL = process.env.DATABASE_URL;
+
+// Email configuration
+const EMAIL_HOST = process.env.EMAIL_HOST;
+const EMAIL_PORT = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT) : 587;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+const EMAIL_FROM = process.env.EMAIL_FROM || EMAIL_USER;
+// EMAIL_TO removed
 
 // Validate environment variables
 if (!SUPABASE_URL) {
@@ -20,6 +30,23 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
 console.log('🔧 Initializing Supabase client...');
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Initialize email transporter
+let emailTransporter: nodemailer.Transporter | null = null;
+if (EMAIL_HOST && EMAIL_USER && EMAIL_PASS) { // EMAIL_TO removed from check
+  emailTransporter = nodemailer.createTransport({
+    host: EMAIL_HOST,
+    port: EMAIL_PORT,
+    secure: EMAIL_PORT === 465, // true for 465, false for other ports
+    auth: {
+      user: EMAIL_USER,
+      pass: EMAIL_PASS,
+    },
+  });
+  console.log('📧 Email notifications enabled');
+} else {
+  console.log('⚠️ Email notifications disabled - missing email configuration');
+}
+
 interface Monitor {
   id: string;
   name: string;
@@ -32,6 +59,166 @@ interface Monitor {
   created_at: string;
   updated_at: string;
   email_notifications: boolean;
+  user_id: string; // <-- add user_id
+}
+
+// Helper to fetch user email
+async function getUserEmail(user_id: string): Promise<string | null> {
+  if (!user_id) return null;
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('email')
+    .eq('id', user_id)
+    .single();
+  if (error) {
+    log(`❌ Failed to fetch user email for user_id ${user_id}: ${error.message}`, 'error');
+    return null;
+  }
+  if (!user?.email) {
+    log(`⚠️ No email found for user_id ${user_id}`, 'warn');
+    return null;
+  }
+  return user.email;
+}
+
+// Email notification function with throttling
+async function sendEmailNotification(monitor: Monitor, incidentType: string, errorMessage: string) {
+  if (!emailTransporter) {
+    log('📧 Email notification skipped - email not configured', 'debug');
+    return;
+  }
+
+  if (!monitor.email_notifications) {
+    log(`📧 Email notification skipped for ${monitor.name} - notifications disabled`, 'debug');
+    return;
+  }
+
+  // Fetch user email from users table
+  const userEmail = await getUserEmail(monitor.user_id);
+  if (!userEmail) {
+    log(`⚠️ Skipping email notification for ${monitor.name} - user email not found`, 'warn');
+    return;
+  }
+
+  try {
+    // Check if we should throttle this notification
+    const { data: lastNotification, error: fetchError } = await supabase
+      .from('incidents')
+      .select('last_notified_at')
+      .eq('monitor_id', monitor.id)
+      .eq('type', incidentType)
+      .eq('status', 'active')
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      log(`❌ Error checking last notification time: ${fetchError.message}`, 'error');
+      return;
+    }
+
+    const now = new Date();
+    const throttleHours = 4; // Send notification only once every 4 hours
+    const throttleMs = throttleHours * 60 * 60 * 1000;
+
+    if (lastNotification?.last_notified_at) {
+      const lastNotified = new Date(lastNotification.last_notified_at);
+      const timeSinceLastNotification = now.getTime() - lastNotified.getTime();
+      
+      if (timeSinceLastNotification < throttleMs) {
+        const remainingHours = Math.ceil((throttleMs - timeSinceLastNotification) / (60 * 60 * 1000));
+        log(`📧 Email notification throttled for ${monitor.name} - last sent ${Math.floor(timeSinceLastNotification / (60 * 60 * 1000))}h ago, will send again in ~${remainingHours}h`, 'debug');
+        return;
+      }
+    }
+
+    // Send the email
+    const emailSubject = `🚨 Website Down Alert: ${monitor.name}`;
+    const emailBody = `
+      <h2>🚨 Website Monitoring Alert</h2>
+      <p><strong>Website:</strong> ${monitor.name}</p>
+      <p><strong>URL:</strong> <a href="${monitor.url}">${monitor.url}</a></p>
+      <p><strong>Status:</strong> ${incidentType.toUpperCase()}</p>
+      <p><strong>Error:</strong> ${errorMessage}</p>
+      <p><strong>Time:</strong> ${now.toISOString()}</p>
+      <hr>
+      <p><em>This notification is throttled to once every ${throttleHours} hours to avoid spam.</em></p>
+    `;
+
+    const mailOptions = {
+      from: EMAIL_FROM,
+      to: userEmail,
+      subject: emailSubject,
+      html: emailBody,
+    };
+
+    await emailTransporter.sendMail(mailOptions);
+    log(`📧 Email notification sent for ${monitor.name} to ${userEmail}`, 'info');
+
+    // Update the last_notified_at timestamp
+    const { error: updateError } = await supabase
+      .from('incidents')
+      .update({ last_notified_at: now.toISOString() })
+      .eq('monitor_id', monitor.id)
+      .eq('type', incidentType)
+      .eq('status', 'active')
+      .is('resolved_at', null);
+
+    if (updateError) {
+      log(`❌ Failed to update last_notified_at for ${monitor.name}: ${updateError.message}`, 'error');
+    }
+
+  } catch (emailError: any) {
+    log(`❌ Failed to send email notification for ${monitor.name}: ${emailError.message}`, 'error');
+  }
+}
+
+// Send recovery notification
+async function sendRecoveryNotification(monitor: Monitor, durationMinutes: number) {
+  if (!emailTransporter) {
+    log('📧 Recovery email notification skipped - email not configured', 'debug');
+    return;
+  }
+
+  if (!monitor.email_notifications) {
+    log(`📧 Recovery email notification skipped for ${monitor.name} - notifications disabled`, 'debug');
+    return;
+  }
+
+  // Fetch user email from users table
+  const userEmail = await getUserEmail(monitor.user_id);
+  if (!userEmail) {
+    log(`⚠️ Skipping recovery email notification for ${monitor.name} - user email not found`, 'warn');
+    return;
+  }
+
+  try {
+    const emailSubject = `✅ Website Recovery: ${monitor.name}`;
+    const emailBody = `
+      <h2>✅ Website Recovery Alert</h2>
+      <p><strong>Website:</strong> ${monitor.name}</p>
+      <p><strong>URL:</strong> <a href="${monitor.url}">${monitor.url}</a></p>
+      <p><strong>Status:</strong> ONLINE</p>
+      <p><strong>Downtime Duration:</strong> ${durationMinutes} minutes</p>
+      <p><strong>Recovery Time:</strong> ${new Date().toISOString()}</p>
+      <hr>
+      <p><em>Your website is now back online!</em></p>
+    `;
+
+    const mailOptions = {
+      from: EMAIL_FROM,
+      to: userEmail,
+      subject: emailSubject,
+      html: emailBody,
+    };
+
+    await emailTransporter.sendMail(mailOptions);
+    log(`📧 Recovery email notification sent for ${monitor.name} to ${userEmail}`, 'info');
+
+  } catch (emailError: any) {
+    log(`❌ Failed to send recovery email notification for ${monitor.name}: ${emailError.message}`, 'error');
+  }
 }
 
 // Enhanced logging function
@@ -123,6 +310,9 @@ async function checkMonitor(monitor: Monitor) {
               log(`❌ Failed to resolve incident ${incident.id} for ${monitor.name}: ${updateError.message}`, 'error');
             } else {
               log(`✅ Incident ${incident.id} resolved for ${monitor.name}`, 'info');
+              
+              // Send recovery notification
+              await sendRecoveryNotification(monitor, durationMinutes);
             }
           }
         }
@@ -207,6 +397,9 @@ async function checkMonitor(monitor: Monitor) {
           log(`❌ Failed to log incident for ${monitor.name}: ${incidentError.message}`, 'error');
         } else {
           log(`🚨 Incident logged for ${monitor.name} (${status})`, 'warn');
+          
+          // Send email notification for new incident
+          await sendEmailNotification(monitor, status, error_message || 'Website is down');
         }
       }
     } catch (incidentCatchError: any) {
@@ -247,7 +440,7 @@ async function main() {
     // Fetch all active monitors with their full schema
     const { data: monitors, error } = await supabase
       .from('monitors')
-      .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications')
+      .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
       .eq('is_active', true);
 
     if (error) {
@@ -323,7 +516,7 @@ async function listenForNewMonitors() {
       // Fetch the new monitor from Supabase
       const { data: monitor, error } = await supabase
         .from('monitors')
-        .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications')
+        .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
         .eq('id', monitorId)
         .single();
       if (error || !monitor) {
@@ -340,6 +533,7 @@ async function listenForNewMonitors() {
     log(`❌ Postgres NOTIFY listener error: ${err.message}`, 'error');
   });
 }
+
 
 // Start the application
 main().catch((error) => {
