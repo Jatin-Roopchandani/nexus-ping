@@ -85,11 +85,6 @@ A modern, full-stack uptime monitoring platform built with Next.js. Effortlessly
 
 ---
 
-## 🌐 Deploy
-
-The easiest way to deploy your Next.js app is with [Vercel](https://vercel.com/) or Docker. See the official [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
----
 
 ## 🤝 Contributing
 
@@ -97,4 +92,3 @@ Contributions, issues, and feature requests are welcome! Feel free to open an is
 
 ---
 
-## © {new Date().getFullYear()} Uptime Monitoring Service
