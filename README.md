@@ -2,6 +2,9 @@
 
 A modern, full-stack uptime monitoring platform built with Next.js. Effortlessly track the uptime and health of your websites and APIs, get instant alerts, view incident history, and more—all with a beautiful, intuitive dashboard.
 
+<img width="1919" height="822" alt="example" src="https://github.com/user-attachments/assets/cbfd794f-7c4c-4842-a3c0-855fdfcb2939" />
+
+
 ---
 
 ## 🚀 Features
