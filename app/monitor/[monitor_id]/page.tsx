@@ -1,9 +1,11 @@
-// Monitor detail page: shows status, uptime, response time, and incidents for a single monitor
-// Route: /monitor/[monitor_id]
-// Author: AI-generated, 2024
-import { createClient } from '@/utils/supabase/server';
+'use client';
+import { createClient } from '@/utils/supabase/client';
 import { notFound } from 'next/navigation';
 import { redirect } from 'next/navigation';
+import { updateMonitorSettings } from './actions';
+import { useFormState } from 'react-dom';
+import { useEffect, useState, use } from 'react';
+import SettingsForm from './SettingsForm';
 
 function calcUptime(checks: any[], from: Date): number {
   const filtered = checks.filter(c => new Date(c.checked_at) >= from);
@@ -19,93 +21,113 @@ function avgResponseTime(checks: any[], from: Date): number {
   return Math.round((sum / filtered.length));
 }
 
-export default async function MonitorDetailPage({ params }: { params: { monitor_id: string } }) {
-  const supabase = await createClient();
+export default function MonitorDetailPage({ params }: { params: Promise<{ monitor_id: string }> }) {
+  const { monitor_id } = use(params);
+  const [monitor, setMonitor] = useState<any>(null);
+  const [checks, setChecks] = useState<any[]>([]);
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [monitoredSites, setMonitoredSites] = useState<any[]>([]);
+  const [sidebarIncidents, setSidebarIncidents] = useState<any[]>([]);
+  const [userData, setUserData] = useState<any>(null);
 
-  // Get user
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData?.user) {
-    redirect('/login');
-  }
-
-  // Get all monitors for sidebar
-  const { data: monitors, error: monitorsError } = await supabase
-    .from('monitors')
-    .select('id, name, url, is_active, created_at')
-    .eq('user_id', userData.user.id)
-    .order('created_at', { ascending: false });
-  const monitorIds = (monitors || []).map(m => m.id);
-
-  // Get latest check for each monitor for sidebar
-  let latestChecks: Record<string, any> = {};
-  if (monitorIds.length > 0) {
-    const { data: checks } = await supabase
-      .from('monitor_checks')
-      .select('monitor_id, status, checked_at')
-      .in('monitor_id', monitorIds)
-      .order('checked_at', { ascending: false });
-    for (const check of checks || []) {
-      if (!latestChecks[check.monitor_id]) {
-        latestChecks[check.monitor_id] = check;
+  useEffect(() => {
+    const fetchData = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        redirect('/login');
       }
-    }
+      setUserData({ user });
+
+      const { data: monitorData, error: monitorError } = await supabase
+        .from('monitors')
+        .select('*')
+        .eq('id', monitor_id)
+        .single();
+
+      if (monitorError || !monitorData) {
+        notFound();
+      }
+      setMonitor(monitorData);
+
+      const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const { data: checksData, error: checksError } = await supabase
+        .from('monitor_checks')
+        .select('*')
+        .eq('monitor_id', monitor_id)
+        .gte('checked_at', since30d.toISOString())
+        .order('checked_at', { ascending: false });
+      if (checksData) {
+        setChecks(checksData);
+      }
+
+      const { data: incidentsData, error: incidentsError } = await supabase
+        .from('incidents')
+        .select('*')
+        .eq('monitor_id', monitor_id)
+        .order('started_at', { ascending: false })
+        .limit(10);
+      if (incidentsData) {
+        setIncidents(incidentsData);
+      }
+
+      const { data: monitors, error: monitorsError } = await supabase
+        .from('monitors')
+        .select('id, name, url, is_active, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      const monitorIds = (monitors || []).map(m => m.id);
+
+      let latestChecks: Record<string, any> = {};
+      if (monitorIds.length > 0) {
+        const { data: checks } = await supabase
+          .from('monitor_checks')
+          .select('monitor_id, status, checked_at')
+          .in('monitor_id', monitorIds)
+          .order('checked_at', { ascending: false });
+        for (const check of checks || []) {
+          if (!latestChecks[check.monitor_id]) {
+            latestChecks[check.monitor_id] = check;
+          }
+        }
+      }
+      const monitoredSites = (monitors || []).map((monitor) => {
+        const check = latestChecks[monitor.id];
+        return {
+          id: monitor.id,
+          name: monitor.name,
+          url: monitor.url,
+          status: check ? check.status : (monitor.is_active ? 'unknown' : 'offline'),
+          lastCheck: check ? new Date(check.checked_at).toLocaleString() : 'Never',
+        }
+      });
+      setMonitoredSites(monitoredSites);
+
+      let sidebarIncidents: any[] = [];
+      if (monitorIds.length > 0) {
+        const { data: incidentsData, error: incidentsError } = await supabase
+          .from('incidents')
+          .select('id, monitor_id, name, url, type, status, started_at, resolved_at, duration_minutes, description, created_at')
+          .in('monitor_id', monitorIds)
+          .order('started_at', { ascending: false })
+          .limit(10);
+        if (!incidentsError && incidentsData) {
+          setSidebarIncidents(incidentsData);
+        }
+      }
+    };
+
+    fetchData();
+  }, [monitor_id]);
+
+  if (!monitor || !userData) {
+    return <div>Loading...</div>;
   }
-  const monitoredSites = (monitors || []).map((monitor) => {
-    const check = latestChecks[monitor.id];
-    return {
-      id: monitor.id,
-      name: monitor.name,
-      url: monitor.url,
-      status: check ? check.status : (monitor.is_active ? 'unknown' : 'offline'),
-      lastCheck: check ? new Date(check.checked_at).toLocaleString() : 'Never',
-    }
-  });
 
-  // Get recent incidents for sidebar
-  let sidebarIncidents: any[] = [];
-  if (monitorIds.length > 0) {
-    const { data: incidentsData, error: incidentsError } = await supabase
-      .from('incidents')
-      .select('id, monitor_id, name, url, type, status, started_at, resolved_at, duration_minutes, description, created_at')
-      .in('monitor_id', monitorIds)
-      .order('started_at', { ascending: false })
-      .limit(10);
-    if (!incidentsError && incidentsData) {
-      sidebarIncidents = incidentsData;
-    }
-  }
-
-  // Get monitor
-  const { data: monitor, error: monitorError } = await supabase
-    .from('monitors')
-    .select('*')
-    .eq('id', params.monitor_id)
-    .single();
-  if (monitorError || !monitor) notFound();
-
-  // Get all checks for this monitor (last 30 days)
-  const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  let { data: checks, error: checksError } = await supabase
-    .from('monitor_checks')
-    .select('*')
-    .eq('monitor_id', params.monitor_id)
-    .gte('checked_at', since30d.toISOString())
-    .order('checked_at', { ascending: false });
-  if (!checks) checks = [];
-
-  // Get recent incidents
-  let { data: incidents, error: incidentsError } = await supabase
-    .from('incidents')
-    .select('*')
-    .eq('monitor_id', params.monitor_id)
-    .order('started_at', { ascending: false })
-    .limit(10);
-  if (!incidents) incidents = [];
-
-  // Uptime calculations
   const now = new Date();
   const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const since30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const uptime24h = calcUptime(checks, since24h);
   const uptime7d = calcUptime(checks, since7d);
   const uptime30d = calcUptime(checks, since30d);
@@ -287,7 +309,7 @@ export default async function MonitorDetailPage({ params }: { params: { monitor_
             </div>
           </div>
           {/* Incidents Section */}
-          <div className="rounded-2xl shadow-2xl bg-indigo-950 p-8 text-white">
+          <div className="rounded-2xl shadow-2xl bg-indigo-950 p-8 text-white m-10">
             <h2 className="text-2xl font-bold mb-6">Recent Incidents</h2>
             <div className="space-y-4">
               {incidents.length === 0 && <div className="text-gray-300">No incidents in the last 30 days.</div>}
@@ -307,8 +329,10 @@ export default async function MonitorDetailPage({ params }: { params: { monitor_
               ))}
             </div>
           </div>
+          <SettingsForm monitor={monitor} />
         </div>
+        
       </div>
     </div>
   );
-} 
+}

@@ -47,8 +47,9 @@ export default function Home() {
         {/* Left: Text */}
         <div className="flex-1 flex flex-col justify-center items-start text-left gap-6">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-red-400 drop-shadow-sm">
-            Uptime Monitoring Service
+            Nexus Ping
           </h1>
+          <p>Free and open source monitor to track the uptime and response time of your websites and APIs 24/7.</p>
           <a
             href="/signup"
             className="inline-block mt-4 px-8 py-3 rounded-full bg-blue-700 text-white font-semibold text-lg shadow-md hover:bg-blue-800 transition-colors"
@@ -77,8 +78,9 @@ export default function Home() {
           <a href="#contact" className="hover:underline">Contact</a>
           <a href="/login" className="hover:underline">Login</a>
           <a href="/signup" className="hover:underline">Signup</a>
+          <a href="https://github.com/Jatin-Roopchandani/uptime-monitoring-service" className="hover:underline">Github</a>
         </div>
-        <span>&copy; {new Date().getFullYear()} Uptime Monitoring Service</span>
+        <span>&copy; {new Date().getFullYear()} Nexus Ping</span>
       </footer>
     </div>
   );

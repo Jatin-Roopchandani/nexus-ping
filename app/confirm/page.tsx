@@ -23,11 +23,11 @@ export default function ConfirmPage() {
           </div>
           <h1 className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-4">Check Your Email</h1>
           <p className="text-blue-700 dark:text-blue-300 mb-6">
-            We've sent you a confirmation email. Please check your inbox and click the confirmation link to verify your account.
+            We&apos;ve sent you a confirmation email. Please check your inbox and click the confirmation link to verify your account.
           </p>
           <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg mb-6">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Note:</strong> If you don't see the email, check your spam folder.
+              <strong>Note:</strong> If you don&apos;t see the email, check your spam folder.
             </p>
           </div>
           <Link 
