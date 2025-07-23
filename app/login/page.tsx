@@ -128,6 +128,10 @@ export default function Login() {
           Don&apos;t have an account?{' '}
           <Link href="/signup" className="text-blue-700 hover:underline">Sign up</Link>
         </p>
+        <p className="mt-4 text-center text-blue-900 dark:text-blue-100 text-sm">
+          <Link href="/forgot-password"
+className="text-blue-700 hover:underline">Forgot Password?</Link>
+        </p>
       </div>
     </div>
   );

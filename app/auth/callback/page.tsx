@@ -12,7 +12,13 @@ export default function AuthCallback() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        router.replace("/dashboard");
+        const url = new URL(window.location.href);
+        const next = url.searchParams.get("next");
+                if (next === "/private/update-password") {
+          router.replace(`${next}?reset=true`);
+        } else {
+          router.replace(next || "/dashboard");
+        }
       } else {
         router.replace("/login");
       }
