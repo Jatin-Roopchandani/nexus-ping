@@ -1,14 +1,21 @@
 'use client';
 
-import { updateMonitorSettings } from './actions';
+import { deleteMonitor, updateMonitorSettings } from './actions';
 import { useActionState } from "react";
 const initialState = {
   error: null,
   success: null,
 };
 
+
 export default function SettingsForm({ monitor }: { monitor: any }) {
   const [state, formAction] = useActionState(updateMonitorSettings, initialState);
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this monitor?')) {
+      await deleteMonitor(monitor.id);
+    }
+  };
 
   return (
     <div className="rounded-2xl shadow-2xl bg-indigo-950 p-8 text-white m-10">
@@ -29,6 +36,7 @@ export default function SettingsForm({ monitor }: { monitor: any }) {
         {state?.success && <p className="text-green-500 mt-4">{state.success}</p>}
         {state?.error && <p className="text-red-500 mt-4">{state.error.message}</p>}
       </form>
+      <button onClick={handleDelete} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 mt-4">Delete Monitor</button>
     </div>
   );
 }

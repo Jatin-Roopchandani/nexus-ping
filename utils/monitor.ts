@@ -408,7 +408,10 @@ async function checkMonitor(monitor: Monitor) {
   }
 }
 
-async function startMonitorLoop(monitor: Monitor) {
+// Track running monitor loops
+const monitorLoops: Record<string, NodeJS.Timeout> = {};
+
+function startMonitorLoop(monitor: Monitor) {
   log(`🚀 Starting monitor loop for: ${monitor.name} (${monitor.url})`, 'info');
   log(`⏱️ Check frequency: ${monitor.check_frequency} seconds`, 'debug');
   log(`⏰ Timeout: ${monitor.timeout} seconds`, 'debug');
@@ -420,82 +423,20 @@ async function startMonitorLoop(monitor: Monitor) {
     } catch (error: any) {
       log(`❌ Error in monitor loop for ${monitor.name}: ${error.message}`, 'error');
     }
-    
     // Schedule next check
-    setTimeout(run, monitor.check_frequency * 1000);
+    monitorLoops[monitor.id] = setTimeout(run, monitor.check_frequency * 1000);
   };
-  
   // Start the first check immediately
   run();
 }
 
-async function main() {
-  log('🚀 Starting Uptime Monitor Service...', 'info');
-  log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`, 'debug');
-  log(`📅 Start time: ${new Date().toISOString()}`, 'info');
-
-  try {
-    log('📡 Fetching active monitors from database...', 'info');
-    
-    // Fetch all active monitors with their full schema
-    const { data: monitors, error } = await supabase
-      .from('monitors')
-      .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
-      .eq('is_active', true);
-
-    if (error) {
-      log(`❌ Database error while fetching monitors: ${error.message}`, 'error');
-      log(`Database details: ${JSON.stringify(error)}`, 'debug');
-      process.exit(1);
-    }
-
-    if (!monitors || monitors.length === 0) {
-      log('⚠️ No active monitors found in database', 'warn');
-      log('💡 Add some monitors through your dashboard to start monitoring', 'info');
-      return;
-    }
-
-    log(`✅ Found ${monitors.length} active monitor(s)`, 'info');
-    
-    // Log monitor details for debugging
-    monitors.forEach((monitor: Monitor, index: number) => {
-      log(`📋 Monitor ${index + 1}: ${monitor.name}`, 'debug');
-      log(`   URL: ${monitor.url}`, 'debug');
-      log(`   Frequency: ${monitor.check_frequency}s`, 'debug');
-      log(`   Timeout: ${monitor.timeout}s`, 'debug');
-    });
-
-    // Start monitoring loops for each monitor
-    for (const monitor of monitors as Monitor[]) {
-      try {
-        startMonitorLoop(monitor);
-        log(`✅ Started monitoring ${monitor.name} (${monitor.url}) every ${monitor.check_frequency} seconds`, 'info');
-      } catch (error: any) {
-        log(`❌ Failed to start monitoring for ${monitor.name}: ${error.message}`, 'error');
-      }
-    }
-
-    log('🎉 All monitors started successfully!', 'info');
-    log('💡 Monitor will continue running in the background...', 'info');
-    log('📊 Check logs for real-time monitoring status', 'info');
-
-  } catch (error: any) {
-    log(`❌ Critical error in main function: ${error.message}`, 'error');
-    log(`Stack trace: ${error.stack}`, 'error');
-    process.exit(1);
+function stopMonitorLoop(monitorId: string) {
+  if (monitorLoops[monitorId]) {
+    clearTimeout(monitorLoops[monitorId]);
+    delete monitorLoops[monitorId];
+    log(`🛑 Stopped monitoring for monitor_id: ${monitorId}`, 'info');
   }
 }
-
-// Graceful shutdown handling
-process.on('SIGINT', () => {
-  log('🛑 Received SIGINT, shutting down gracefully...', 'info');
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  log('🛑 Received SIGTERM, shutting down gracefully...', 'info');
-  process.exit(0);
-});
 
 // --- Listen for new monitors via Postgres NOTIFY ---
 async function listenForNewMonitors() {
@@ -534,14 +475,44 @@ async function listenForNewMonitors() {
   });
 }
 
+// --- Listen for deleted monitors via Postgres NOTIFY ---
+async function listenForDeletedMonitors() {
+  const pgUrl = process.env.DATABASE_URL;
+  if (!pgUrl) {
+    log('❌ DATABASE_URL environment variable is not set for Postgres NOTIFY listener', 'error');
+    return;
+  }
+  const pgClient = new PgClient({ connectionString: pgUrl });
+  await pgClient.connect();
+  await pgClient.query('LISTEN monitor_deleted');
+  log('🔔 Listening for monitor_deleted notifications from Postgres...', 'info');
+
+  pgClient.on('notification', async (msg: Notification) => {
+    if (msg.channel === 'monitor_deleted') {
+      const monitorId = msg.payload;
+      if (monitorId) stopMonitorLoop(monitorId);
+    }
+  });
+
+  pgClient.on('error', (err: Error) => {
+    log(`❌ Postgres NOTIFY listener error: ${err.message}`, 'error');
+  });
+}
 
 // Start the application
+async function main() {
+  // Start listening for new monitors
+  listenForNewMonitors().catch((err) => {
+    log(`❌ Failed to start Postgres NOTIFY listener: ${err.message}`, 'error');
+  });
+
+  // Start listening for deleted monitors
+  listenForDeletedMonitors().catch((err) => {
+    log(`❌ Failed to start Postgres monitor_deleted NOTIFY listener: ${err.message}`, 'error');
+  });
+}
+
 main().catch((error) => {
   log(`❌ Failed to start monitor service: ${error.message}`, 'error');
   process.exit(1);
 });
-
-// Start listening for new monitors
-listenForNewMonitors().catch((err) => {
-  log(`❌ Failed to start Postgres NOTIFY listener: ${err.message}`, 'error');
-}); 

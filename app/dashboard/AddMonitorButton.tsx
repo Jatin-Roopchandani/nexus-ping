@@ -122,7 +122,7 @@ export default function AddMonitorButton() {
                   required
                 />
               </div>
-              <div className="flex items-center">
+              {/* <div className="flex items-center">
                 <input
                   type="checkbox"
                   id="sslCheck"
@@ -133,7 +133,7 @@ export default function AddMonitorButton() {
                 <label htmlFor="sslCheck" className="text-sm text-white">
                   Check for SSL errors
                 </label>
-              </div>
+              </div> */}
               {error && <div className="text-red-400 text-sm">{error}</div>}
               <div className="flex justify-end space-x-2">
                 <button
