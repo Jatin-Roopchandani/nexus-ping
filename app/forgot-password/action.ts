@@ -2,7 +2,6 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
 
 export async function forgotPassword(formData: FormData) {
   const supabase = await createClient();
@@ -13,7 +12,7 @@ export async function forgotPassword(formData: FormData) {
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `http://localhost:3000/auth/callback?next=/private/update-password`,
+    redirectTo: `/auth/callback?next=/private/update-password`,
   });
 
   if (error) {

@@ -4,7 +4,7 @@ import { deleteMonitor, updateMonitorSettings } from './actions';
 import { useActionState } from "react";
 const initialState = {
   error: null,
-  success: null,
+  success: '',
 };
 
 
