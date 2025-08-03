@@ -18,7 +18,7 @@ export default function ContactPage() {
             <p className="text-white/80 mb-10">Please use your account e-mail address, we'll get back to you ASAP on a business day.</p>
             <h2 className="text-3xl font-bold mb-6 text-white">Community</h2>
             <p className="text-white/80">Join us on{' '}
-              <Link href="https://discord.com/invite/uptimerobot" className="text-green-400 underline" target="_blank">Discord</Link>{' '}
+              <Link href="#" className="text-green-400 underline" target="_blank">Discord</Link>{' '}
               to get the latest news, participate in discussions, and have the chance to win prizes in various activities.
             </p>
           </div>

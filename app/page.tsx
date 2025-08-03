@@ -44,10 +44,10 @@ export default function Home() {
         {/* Right: Example Image */}
         <div className="flex-1 flex justify-center items-center">
           <img
-            src="/example.png"
+            src="/image.png"
             alt="Example dashboard screenshot"
             className="rounded-xl shadow-lg border border-white/20 max-w-6xl w-full h-auto object-contain bg-white/5"
-            style={{ maxHeight: '1000px', minWidth: '600px' }}
+            style={{ maxHeight: '1100px', minWidth: '700px' }}
           />
         </div>
       </main>
@@ -58,7 +58,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row gap-6 items-center">
           <a href="/" className="hover:underline">Home</a>
           <a href="#features" className="hover:underline">Features</a>
-          <a href="#contact" className="hover:underline">Contact</a>
+          <a href="/contact" className="hover:underline">Contact</a>
           <a href="/login" className="hover:underline">Login</a>
           <a href="/signup" className="hover:underline">Signup</a>
           <a href="https://github.com/Jatin-Roopchandani/uptime-monitoring-service" className="hover:underline">Github</a>

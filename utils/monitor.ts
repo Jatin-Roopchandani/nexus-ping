@@ -499,6 +499,49 @@ async function listenForDeletedMonitors() {
   });
 }
 
+// --- Listen for monitor updates via Postgres NOTIFY ---
+async function listenForUpdatedMonitors() {
+  const pgUrl = process.env.DATABASE_URL;
+  if (!pgUrl) {
+    log('❌ DATABASE_URL environment variable is not set for Postgres NOTIFY listener', 'error');
+    return;
+  }
+  const pgClient = new PgClient({ connectionString: pgUrl });
+  await pgClient.connect();
+  await pgClient.query('LISTEN monitor_updated');
+  log('🔔 Listening for monitor_updated notifications from Postgres...', 'info');
+
+  pgClient.on('notification', async (msg: Notification) => {
+    if (msg.channel === 'monitor_updated') {
+      const monitorId = msg.payload;
+      if (!monitorId) return;
+      log(`🔄 Received monitor_updated notification for monitor_id: ${monitorId}`, 'info');
+      // Fetch the updated monitor from Supabase
+      const { data: monitor, error } = await supabase
+        .from('monitors')
+        .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
+        .eq('id', monitorId)
+        .single();
+      if (error || !monitor) {
+        log(`❌ Failed to fetch updated monitor with id ${monitorId}: ${error?.message}`, 'error');
+        return;
+      }
+      // Restart the monitor loop with new settings
+      stopMonitorLoop(monitorId);
+      if (monitor.is_active) {
+        startMonitorLoop(monitor);
+        log(`✅ Restarted monitor loop for updated monitor: ${monitor.name} (${monitor.url})`, 'info');
+      } else {
+        log(`🛑 Monitor ${monitor.name} is not active, not restarting loop.`, 'info');
+      }
+    }
+  });
+
+  pgClient.on('error', (err: Error) => {
+    log(`❌ Postgres NOTIFY listener error: ${err.message}`, 'error');
+  });
+}
+
 // Start the application
 async function main() {
   // Start listening for new monitors
@@ -510,7 +553,13 @@ async function main() {
   listenForDeletedMonitors().catch((err) => {
     log(`❌ Failed to start Postgres monitor_deleted NOTIFY listener: ${err.message}`, 'error');
   });
+
+  // Start listening for updated monitors
+  listenForUpdatedMonitors().catch((err) => {
+    log(`❌ Failed to start Postgres monitor_updated NOTIFY listener: ${err.message}`, 'error');
+  });
 }
+
 
 main().catch((error) => {
   log(`❌ Failed to start monitor service: ${error.message}`, 'error');
