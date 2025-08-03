@@ -16,6 +16,10 @@ export async function updateMonitorSettings(prevState: any, formData: FormData) 
   const emailNotifications = formData.get('emailNotifications') === 'on';
   const checkFrequency = parseInt(formData.get('checkFrequency') as string, 10);
 
+  if (checkFrequency < 60) {
+    return { error: { message: 'Check frequency must be at least 60 seconds.' } };
+  }
+
   const { error } = await supabase
     .from('monitors')
     .update({

@@ -439,42 +439,100 @@ function stopMonitorLoop(monitorId: string) {
 }
 
 // --- Listen for new monitors via Postgres NOTIFY ---
+let newPgClient: PgClient | null = null;
+let newKeepAliveInterval: NodeJS.Timeout | null = null;
+
 async function listenForNewMonitors() {
   const pgUrl = process.env.DATABASE_URL;
   if (!pgUrl) {
     log('❌ DATABASE_URL environment variable is not set for Postgres NOTIFY listener', 'error');
     return;
   }
-  const pgClient = new PgClient({ connectionString: pgUrl });
-  await pgClient.connect();
-  await pgClient.query('LISTEN new_monitor');
-  log('🔔 Listening for new_monitor notifications from Postgres...', 'info');
 
-  pgClient.on('notification', async (msg: Notification) => {
-    if (msg.channel === 'new_monitor') {
-      const monitorId = msg.payload;
-      log(`🔔 Received new_monitor notification for monitor_id: ${monitorId}`, 'info');
-      // Fetch the new monitor from Supabase
-      const { data: monitor, error } = await supabase
-        .from('monitors')
-        .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
-        .eq('id', monitorId)
-        .single();
-      if (error || !monitor) {
-        log(`❌ Failed to fetch new monitor with id ${monitorId}: ${error?.message}`, 'error');
-        return;
+  if (newPgClient) {
+    try {
+      await newPgClient.end();
+    } catch (_) {}
+    newPgClient = null;
+  }
+
+  newPgClient = new PgClient({ connectionString: pgUrl });
+
+  try {
+    await newPgClient.connect();
+    await newPgClient.query('LISTEN new_monitor');
+    log('✨ Listening for monitor_created notifications from Postgres...', 'info');
+
+    newPgClient.on('notification', async (msg: Notification) => {
+      if (msg.channel === 'new_monitor') {
+        const monitorId = msg.payload;
+        // if (!monitorId) return;
+
+        log(`🆕 Received monitor_created notification for monitor_id: ${monitorId}`, 'info');
+
+        const { data: monitor, error } = await supabase
+          .from('monitors')
+          .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
+          .eq('id', monitorId)
+          .single();
+
+        if (error || !monitor) {
+          log(`❌ Failed to fetch new monitor with id ${monitorId}: ${error?.message}`, 'error');
+          return;
+        }
+
+        if (monitor.is_active) {
+          startMonitorLoop(monitor);
+          log(`✅ Started monitor loop for new monitor: ${monitor.name} (${monitor.url})`, 'info');
+        } else {
+          log(`⏸️ Monitor ${monitor.name} is not active, not starting loop.`, 'info');
+        }
       }
-      // Start monitoring the new monitor
-      startMonitorLoop(monitor);
-      log(`✅ Started monitoring new monitor: ${monitor.name} (${monitor.url})`, 'info');
-    }
-  });
+    });
 
-  pgClient.on('error', (err: Error) => {
-    log(`❌ Postgres NOTIFY listener error: ${err.message}`, 'error');
-  });
+    newPgClient.on('error', (err: Error) => {
+      log(`❌ Postgres NOTIFY listener error (new): ${err.message}`, 'error');
+      reconnectNewListener();
+    });
+
+    newPgClient.on('end', () => {
+      log(`⚠️ Postgres client (new) disconnected`, 'warn');
+      reconnectNewListener();
+    });
+
+    // Keepalive
+    if (newKeepAliveInterval) clearInterval(newKeepAliveInterval);
+    newKeepAliveInterval = setInterval(async () => {
+      try {
+        await newPgClient!.query('SELECT 1');
+        log(`✅ Keepalive succeeded (new)`, 'debug');
+      } catch (err: any) {
+        log(`❌ Postgres keepalive failed (new): ${err.message}`, 'error');
+        reconnectNewListener();
+      }
+    }, 60 * 1000);
+
+  } catch (err: any) {
+    log(`❌ Failed to connect and listen (new): ${err.message}`, 'error');
+    reconnectNewListener();
+  }
 }
 
+function reconnectNewListener() {
+  if (newKeepAliveInterval) {
+    clearInterval(newKeepAliveInterval);
+    newKeepAliveInterval = null;
+  }
+
+  setTimeout(() => {
+    log('♻️ Reconnecting Postgres new monitor listener...', 'info');
+    listenForNewMonitors().catch((err) =>
+      log(`❌ Reconnection failed (new): ${err.message}`, 'error')
+    );
+  }, 5000);
+}
+let deletedPgClient: PgClient | null = null;
+let deletedKeepAliveInterval: NodeJS.Timeout | null = null;
 // --- Listen for deleted monitors via Postgres NOTIFY ---
 async function listenForDeletedMonitors() {
   const pgUrl = process.env.DATABASE_URL;
@@ -482,64 +540,164 @@ async function listenForDeletedMonitors() {
     log('❌ DATABASE_URL environment variable is not set for Postgres NOTIFY listener', 'error');
     return;
   }
-  const pgClient = new PgClient({ connectionString: pgUrl });
-  await pgClient.connect();
-  await pgClient.query('LISTEN monitor_deleted');
-  log('🔔 Listening for monitor_deleted notifications from Postgres...', 'info');
 
-  pgClient.on('notification', async (msg: Notification) => {
-    if (msg.channel === 'monitor_deleted') {
-      const monitorId = msg.payload;
-      if (monitorId) stopMonitorLoop(monitorId);
-    }
-  });
+  if (deletedPgClient) {
+    try {
+      await deletedPgClient.end();
+    } catch (_) {}
+    deletedPgClient = null;
+  }
 
-  pgClient.on('error', (err: Error) => {
-    log(`❌ Postgres NOTIFY listener error: ${err.message}`, 'error');
-  });
+  deletedPgClient = new PgClient({ connectionString: pgUrl });
+
+  try {
+    await deletedPgClient.connect();
+    await deletedPgClient.query('LISTEN monitor_deleted');
+    log('🗑️ Listening for monitor_deleted notifications from Postgres...', 'info');
+
+    deletedPgClient.on('notification', async (msg: Notification) => {
+      if (msg.channel === 'monitor_deleted') {
+        const monitorId = msg.payload;
+        if (!monitorId) return;
+
+        log(`🛑 Received monitor_deleted notification for monitor_id: ${monitorId}`, 'info');
+        stopMonitorLoop(monitorId);
+      }
+    });
+
+    deletedPgClient.on('error', (err: Error) => {
+      log(`❌ Postgres NOTIFY listener error (deleted): ${err.message}`, 'error');
+      reconnectDeletedListener();
+    });
+
+    deletedPgClient.on('end', () => {
+      log(`⚠️ Postgres client (deleted) disconnected`, 'warn');
+      reconnectDeletedListener();
+    });
+
+    // Keepalive
+    if (deletedKeepAliveInterval) clearInterval(deletedKeepAliveInterval);
+    deletedKeepAliveInterval = setInterval(async () => {
+      try {
+        await deletedPgClient!.query('SELECT 1');
+        log(`✅ Keepalive succeeded (deleted)`, 'debug');
+      } catch (err: any) {
+        log(`❌ Postgres keepalive failed (deleted): ${err.message}`, 'error');
+        reconnectDeletedListener();
+      }
+    }, 60 * 1000); // every 1 min
+
+  } catch (err: any) {
+    log(`❌ Failed to connect and listen (deleted): ${err.message}`, 'error');
+    reconnectDeletedListener();
+  }
 }
 
-// --- Listen for monitor updates via Postgres NOTIFY ---
+function reconnectDeletedListener() {
+  if (deletedKeepAliveInterval) {
+    clearInterval(deletedKeepAliveInterval);
+    deletedKeepAliveInterval = null;
+  }
+
+  setTimeout(() => {
+    log('♻️ Reconnecting Postgres deleted monitor listener...', 'info');
+    listenForDeletedMonitors().catch((err) =>
+      log(`❌ Reconnection failed (deleted): ${err.message}`, 'error')
+    );
+  }, 5000); // retry after 5 sec
+}
+
+let updatedPgClient: PgClient | null = null;
+let updatedKeepAliveInterval: NodeJS.Timeout | null = null;
+
 async function listenForUpdatedMonitors() {
   const pgUrl = process.env.DATABASE_URL;
   if (!pgUrl) {
     log('❌ DATABASE_URL environment variable is not set for Postgres NOTIFY listener', 'error');
     return;
   }
-  const pgClient = new PgClient({ connectionString: pgUrl });
-  await pgClient.connect();
-  await pgClient.query('LISTEN monitor_updated');
-  log('🔔 Listening for monitor_updated notifications from Postgres...', 'info');
 
-  pgClient.on('notification', async (msg: Notification) => {
-    if (msg.channel === 'monitor_updated') {
-      const monitorId = msg.payload;
-      if (!monitorId) return;
-      log(`🔄 Received monitor_updated notification for monitor_id: ${monitorId}`, 'info');
-      // Fetch the updated monitor from Supabase
-      const { data: monitor, error } = await supabase
-        .from('monitors')
-        .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
-        .eq('id', monitorId)
-        .single();
-      if (error || !monitor) {
-        log(`❌ Failed to fetch updated monitor with id ${monitorId}: ${error?.message}`, 'error');
-        return;
-      }
-      // Restart the monitor loop with new settings
-      stopMonitorLoop(monitorId);
-      if (monitor.is_active) {
-        startMonitorLoop(monitor);
-        log(`✅ Restarted monitor loop for updated monitor: ${monitor.name} (${monitor.url})`, 'info');
-      } else {
-        log(`🛑 Monitor ${monitor.name} is not active, not restarting loop.`, 'info');
-      }
-    }
-  });
+  if (updatedPgClient) {
+    try {
+      await updatedPgClient.end();
+    } catch (_) {}
+    updatedPgClient = null;
+  }
 
-  pgClient.on('error', (err: Error) => {
-    log(`❌ Postgres NOTIFY listener error: ${err.message}`, 'error');
-  });
+  updatedPgClient = new PgClient({ connectionString: pgUrl });
+
+  try {
+    await updatedPgClient.connect();
+    await updatedPgClient.query('LISTEN monitor_updated');
+    log('🔔 Listening for monitor_updated notifications from Postgres...', 'info');
+
+    updatedPgClient.on('notification', async (msg: Notification) => {
+      if (msg.channel === 'monitor_updated') {
+        const monitorId = msg.payload;
+        if (!monitorId) return;
+        log(`🔄 Received monitor_updated notification for monitor_id: ${monitorId}`, 'info');
+
+        const { data: monitor, error } = await supabase
+          .from('monitors')
+          .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
+          .eq('id', monitorId)
+          .single();
+
+        if (error || !monitor) {
+          log(`❌ Failed to fetch updated monitor with id ${monitorId}: ${error?.message}`, 'error');
+          return;
+        }
+
+        stopMonitorLoop(monitorId);
+        if (monitor.is_active) {
+          startMonitorLoop(monitor);
+          log(`✅ Restarted monitor loop for updated monitor: ${monitor.name} (${monitor.url})`, 'info');
+        } else {
+          log(`🛑 Monitor ${monitor.name} is not active, not restarting loop.`, 'info');
+        }
+      }
+    });
+
+    updatedPgClient.on('error', (err: Error) => {
+      log(`❌ Postgres NOTIFY listener error (updated): ${err.message}`, 'error');
+      reconnectUpdatedListener();
+    });
+
+    updatedPgClient.on('end', () => {
+      log(`⚠️ Postgres client (updated) disconnected`, 'warn');
+      reconnectUpdatedListener();
+    });
+
+    // Keepalive
+    if (updatedKeepAliveInterval) clearInterval(updatedKeepAliveInterval);
+    updatedKeepAliveInterval = setInterval(async () => {
+      try {
+        await updatedPgClient!.query('SELECT 1');
+        log(`✅ Keepalive succeeded (updated)`, 'debug');
+      } catch (err: any) {
+        log(`❌ Postgres keepalive failed (updated): ${err.message}`, 'error');
+        reconnectUpdatedListener();
+      }
+    }, 60 * 1000); // 1 min
+
+  } catch (err: any) {
+    log(`❌ Failed to connect and listen (updated): ${err.message}`, 'error');
+    reconnectUpdatedListener();
+  }
+}
+
+function reconnectUpdatedListener() {
+  if (updatedKeepAliveInterval) {
+    clearInterval(updatedKeepAliveInterval);
+    updatedKeepAliveInterval = null;
+  }
+
+  setTimeout(() => {
+    log('♻️ Reconnecting Postgres updated monitor listener...', 'info');
+    listenForUpdatedMonitors().catch((err) =>
+      log(`❌ Reconnection failed (updated): ${err.message}`, 'error')
+    );
+  }, 5000); // 5 sec delay before retry
 }
 
 // Start the application
