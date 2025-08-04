@@ -1,6 +1,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import SidebarMonitoringList from './SidebarMonitoringList';
+import SidebarRecentIncidentsList from './SidebarRecentIncidentsList';
 
 interface MonitoredSite {
   id: string;
@@ -103,24 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ monitoredSites = [], sidebarIncidents
               Recent Incidents
             </h3>
             <div className="mt-3 space-y-1">
-              {sidebarIncidents.map((incident) => (
-                <div key={incident.id} className="px-3 py-2 hover:bg-white/10 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{incident.name}</p>
-                      <p className="text-xs text-white/60 truncate">{incident.type}</p>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        incident.status === 'Resolved' ? 'bg-green-500/20 text-green-200' : 'bg-yellow-500/20 text-yellow-200'
-                      }`}>
-                        {incident.status}
-                      </span>
-                      <span className="text-xs text-white/60 mt-1">{incident.started_at ? new Date(incident.started_at).toLocaleString() : ''}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              <SidebarRecentIncidentsList incidents={sidebarIncidents} />
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import AddMonitorButton from './AddMonitorButton'
 import Sidebar from './Sidebar'
 import MonitoringList from './MonitoringList'
+import RecentIncidentsList from './RecentIncidentsList'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -181,24 +182,7 @@ export default async function DashboardPage() {
                 <h2 className="text-lg font-bold text-s">Recent Incidents</h2>
               </div>
               <div className="p-6">
-                <div className="space-y-4">
-                  {incidents.map((incident) => (
-                    <div key={incident.id} className="flex items-center justify-between p-4 border hover:bg-indigo-200 border-purple-200 rounded-lg bg-indigo-300">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-900">{incident.name}</h3>
-                        <p className="text-xs text-gray-600">{incident.type}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          incident.status === 'Resolved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {incident.status}
-                        </span>
-                        <p className="text-xs text-gray-600 mt-1">{incident.started_at ? new Date(incident.started_at).toLocaleString() : ''}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <RecentIncidentsList incidents={incidents} />
               </div>
             </div>
           </div>
