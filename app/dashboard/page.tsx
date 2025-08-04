@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import AddMonitorButton from './AddMonitorButton'
 import Sidebar from './Sidebar'
+import MonitoringList from './MonitoringList'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -44,7 +45,7 @@ export default async function DashboardPage() {
       name: monitor.name,
       url: monitor.url,
       status: check ? check.status : (monitor.is_active ? 'unknown' : 'offline'),
-      lastCheck: check ? new Date(check.checked_at).toLocaleString() : 'Never',
+      lastCheck: check ? check.checked_at : 'Never',
     }
   });
 
@@ -170,33 +171,7 @@ export default async function DashboardPage() {
                 <h2 className="text-lg font-bold text-white">Website Monitoring</h2>
               </div>
               <div className="p-6">
-                <div className="space-y-4">
-                  {monitoredSites.map((site) => (
-                    <a
-                      key={site.id}
-                      href={`/monitor/${site.id}`}
-                      className="block"
-                    >
-                      <div className="flex items-center justify-between p-4 border hover:bg-indigo-200 border-purple-200 rounded-lg bg-indigo-300 cursor-pointer">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${site.status === 'online' ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                          <div>
-                            <h3 className="text-sm font-medium text-gray-900">{site.name}</h3>
-                            <p className="text-xs text-gray-600">{site.url}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            site.status === 'online' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {site.status}
-                          </span>
-                          <p className="text-xs text-gray-600 mt-1">{site.lastCheck}</p>
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
+                <MonitoringList sites={monitoredSites} />
               </div>
             </div>
 

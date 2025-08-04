@@ -1,5 +1,6 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
+import SidebarMonitoringList from './SidebarMonitoringList';
 
 interface MonitoredSite {
   id: string;
@@ -92,21 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({ monitoredSites = [], sidebarIncidents
               Monitoring
             </h3>
             <div className="mt-3 space-y-1">
-              {monitoredSites.map((site) => (
-                <a
-                  key={site.id}
-                  href={`/monitor/${site.id}`}
-                  className={`block px-3 py-2 hover:bg-white/10 rounded-md cursor-pointer ${activeMonitorId === site.id ? 'bg-white/20 border-white/30 text-white border-r-2' : ''}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${site.status === 'online' ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                      <span className="text-sm font-medium text-white truncate">{site.name}</span>
-                    </div>
-                    <span className="text-xs text-white/60">{site.lastCheck}</span>
-                  </div>
-                </a>
-              ))}
+              <SidebarMonitoringList sites={monitoredSites} activeMonitorId={activeMonitorId} />
             </div>
           </div>
 
