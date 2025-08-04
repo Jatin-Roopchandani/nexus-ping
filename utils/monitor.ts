@@ -700,8 +700,37 @@ function reconnectUpdatedListener() {
   }, 5000); // 5 sec delay before retry
 }
 
+async function startExistingMonitors() {
+  log('🔍 Scanning for existing monitors to start monitoring...', 'info');
+  try {
+    const { data: monitors, error } = await supabase
+      .from('monitors')
+      .select('id, name, url, check_frequency, timeout, expected_status_code, is_active, ssl_check_enabled, created_at, updated_at, email_notifications, user_id')
+      .eq('is_active', true);
+
+    if (error) {
+      log(`❌ Error fetching existing monitors: ${error.message}`, 'error');
+      return;
+    }
+
+    if (monitors && monitors.length > 0) {
+      log(`▶️ Found ${monitors.length} existing active monitors. Starting monitoring...`, 'info');
+      for (const monitor of monitors) {
+        startMonitorLoop(monitor);
+      }
+    } else {
+      log('ℹ️ No existing active monitors found.', 'info');
+    }
+  } catch (err: any) {
+    log(`❌ An unexpected error occurred while starting existing monitors: ${err.message}`, 'error');
+  }
+}
+
 // Start the application
 async function main() {
+  // Start monitoring existing monitors
+  await startExistingMonitors();
+  
   // Start listening for new monitors
   listenForNewMonitors().catch((err) => {
     log(`❌ Failed to start Postgres NOTIFY listener: ${err.message}`, 'error');
