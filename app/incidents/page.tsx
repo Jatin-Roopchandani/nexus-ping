@@ -1,4 +1,4 @@
-import Sidebar from '../dashboard/Sidebar';
+import Sidebar from '../(dashboard)/dashboard/Sidebar';
 import { createClient } from '@/utils/supabase/server';
 
 interface Incident {

@@ -23,13 +23,13 @@ export default function Home() {
       {/* Navbar */}
       <Navbar/>
       {/* Hero Section with Image */}
-      <main className="flex flex-1 w-full max-w-6xl mx-auto items-center justify-center gap-12 mt-8 mb-8 flex-col md:flex-row min-h-[70vh]">
+      <main className="flex flex-1 w-full max-w-6xl mx-auto items-center justify-center gap-12 mt-8 mb-8 flex-col lg:flex-row min-h-[70vh]">
         {/* Left: Text */}
-        <div className="flex-1 flex flex-col justify-center items-start text-left gap-6">
+        <div className="flex-1 flex flex-col justify-center items-center lg:items-start text-center lg:text-left gap-6">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-red-400 drop-shadow-sm">
             Nexus Ping
           </h1>
-          <p>Free and open source monitor to track the uptime and response time of your websites and APIs 24/7.</p>
+          <p className="max-w-md">Free and open source monitor to track the uptime and response time of your websites and APIs 24/7.</p>
           <a
             href="/signup"
             className="inline-block mt-4 px-8 py-3 rounded-full bg-blue-700 text-white font-semibold text-lg shadow-md hover:bg-blue-800 transition-colors"
@@ -42,8 +42,8 @@ export default function Home() {
           <img
             src="/image.png"
             alt="Example dashboard screenshot"
-            className="rounded-xl shadow-lg border border-white/20 max-w-6xl w-full h-auto object-contain bg-white/5"
-            style={{ maxHeight: '1100px', minWidth: '700px' }}
+            className="rounded-xl shadow-lg border border-white/20 max-w-full w-full h-auto object-contain bg-white/5"
+            style={{ maxWidth: '700px' }}
           />
         </div>
       </main>

@@ -6,8 +6,7 @@ import { updateMonitorSettings } from './actions';
 import { useFormState } from 'react-dom';
 import { useEffect, useState, use } from 'react';
 import SettingsForm from './SettingsForm';
-import Sidebar from '../../dashboard/Sidebar';
-
+import Sidebar from '../../(dashboard)/dashboard/Sidebar';
 function calcUptime(checks: any[], from: Date): number {
   const filtered = checks.filter(c => new Date(c.checked_at) >= from);
   if (filtered.length === 0) return 0;
@@ -141,10 +140,9 @@ export default function MonitorDetailPage({ params }: { params: Promise<{ monito
   return (
     <div className="min-h-screen flex">
       {/* Left Sidebar */}
-      <Sidebar monitoredSites={monitoredSites} sidebarIncidents={sidebarIncidents} userData={userData} />
 
       {/* Main Content */}
-      <div className="flex-1 ml-64 relative">
+      <div className="flex-1 relative">
         {/* Gradient background */}
         <div 
           className="absolute inset-0 bg-black bg-cover bg-center bg-no-repeat opacity-100 -z-10"
